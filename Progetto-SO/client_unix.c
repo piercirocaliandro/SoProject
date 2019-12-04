@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +26,7 @@ void ricevi_msg(void *sockd)
 	long my_conn = (long)sockd;
 	while(1)
 	{
-		if(Readline(my_conn,msg,MAX_LINE-1) <= 0){
+		if(recv(my_conn,msg,MAX_LINE-1,0) <= 0){
 			printf("Chat chiusa \n");
 			if(close(conn_s) == -1){
 				printf("Errore close ! \n");
@@ -76,7 +74,7 @@ int main(int argc, char *argv[]) {
 	char  mychat[MAX_LINE];
 	char username[40];
 	he=NULL;
-	szAddress = "10.201.112.77";
+	szAddress = "192.168.1.106";
 	szPort = "2438";
     /*  Set the remote port  */
     port = strtol(szPort, &endptr, 0);
@@ -205,7 +203,10 @@ int main(int argc, char *argv[]) {
 
 	while(1)
 	{
-		fgets(buffer,MAX_LINE-1,stdin);
+		if(fgets(buffer,MAX_LINE-1,stdin) == NULL)
+		{
+			exit(0);
+		}
 		if(strcmp(buffer, "quit\n") == 0)
 		{
 			Writeline(conn_s, buffer, strlen(buffer));

@@ -249,7 +249,11 @@ void close_users(clients *my_t){
 	ind = my_t->next;
 	while(ind != NULL){
 		strcpy(ind->close_msg, "end_chat");
-		Writeline(ind->conn_s, "end_chat", 9);
+		if(close(my_t->conn_s) == -1){
+			printf("Errore closee \n");
+			exit(-1);
+		}
+		//Writeline(ind->conn_s, "end_chat", 9);
 		ind = ind->next;
 	}
 }

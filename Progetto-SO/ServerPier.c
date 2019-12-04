@@ -233,7 +233,7 @@ void *thread_chat(void *arg){
 				char buffer[100];
 				strcpy(buffer,"E' uscito l'utente : ");
 				strcat(buffer,cl_head->who);
-				strcat(buffer,", il nuovo admin è :");
+				strcat(buffer,"Il nuovo admin è :");
 				strcat(buffer,(cl_head->next)->who);
 				clients *index;
 				index = cl_head->next;
