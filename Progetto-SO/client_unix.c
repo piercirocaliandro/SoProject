@@ -19,6 +19,7 @@
 char cmd[10];
 
 long       conn_s;                /*  connection socket         */
+int ParseCmdLine(int , char **, char **, char **);
 
 void ricevi_msg(void *sockd)
 {
@@ -74,8 +75,7 @@ int main(int argc, char *argv[]) {
 	char  mychat[MAX_LINE];
 	char username[40];
 	he=NULL;
-	szAddress = "192.168.1.106";
-	szPort = "2438";
+	ParseCmdLine(argc, argv, &szAddress, &szPort);
     /*  Set the remote port  */
     port = strtol(szPort, &endptr, 0);
     if ( *endptr )
@@ -235,4 +235,37 @@ int main(int argc, char *argv[]) {
 			memset(buffer, 0, sizeof(char)*(strlen(buffer)+1));	
 		}
 	}
+}
+
+int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort)
+{
+    int n = 1;
+
+    while ( n < argc )
+	{
+		if ( !strncmp(argv[n], "-a", 2) || !strncmp(argv[n], "-A", 2) )
+		{
+		    *szAddress = argv[++n];
+		}
+		else 
+			if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) )
+			{
+			    *szPort = argv[++n];
+			}
+			else
+				if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) )
+				{
+		    		printf("Sintassi:\n\n");
+			    	printf("    client -a (indirizzo server) -p (porta del server) [-h].\n\n");
+			    	exit(EXIT_SUCCESS);
+				}
+		++n;
+    }
+	if (argc==1)
+	{
+   		printf("Sintassi:\n\n");
+    	printf("    client -a (indirizzo server) -p (porta del server) [-h].\n\n");
+	    exit(EXIT_SUCCESS);
+	}
+    return 0;
 }

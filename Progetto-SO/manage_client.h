@@ -30,3 +30,5 @@ int delete_chat(chats **chat_head,char *chat_name);
 void send_close_message(clients *my_t);
 void free_list(clients **cl_head);
 void close_users(clients *my_t);
+void get_token(int sem_key,int n_sem,int val);
+void set_token(int sem_key,int n_sem,int val);

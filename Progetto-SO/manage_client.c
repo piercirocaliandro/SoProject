@@ -274,3 +274,27 @@ void print_names(int sockd, chats *chat_head){
 	Writeline(sockd,buffer,strlen(buffer));
 	memset(buffer,0,sizeof(char)*(strlen(buffer)+1));	
 }
+
+void get_token(int sem_key,int n_sem,int val){
+	struct sembuf _sembuf;
+	_sembuf.sem_num = n_sem;
+	_sembuf.sem_op = -val;
+	_sembuf.sem_flg = 0;
+	if(semop(sem_key, &_sembuf,1) == -1)
+	{
+		printf("Thread : errore semop \n");
+		exit(-1);
+	}
+}
+
+void set_token(int sem_key,int n_sem,int val){
+	struct sembuf _sembuf;
+	_sembuf.sem_num = n_sem;
+	_sembuf.sem_op = val;
+	_sembuf.sem_flg = 0;
+	if(semop(sem_key, &_sembuf,1) == -1)
+	{
+		printf("Thread : errore semop \n");
+		exit(-1);
+	}
+}

@@ -6,6 +6,7 @@
 */
 /*please compile with -pthread */
 
+
 #include <sys/socket.h>       /*  socket definitions        */
 #include <sys/types.h>        /*  socket types              */
 #include <arpa/inet.h>        /*  inet (3) funtions         */
@@ -32,6 +33,7 @@ clients *mem; //usata per passare i nuovi membri della chat al thread corretto
 key_t key = 1234;
 int gen_id;
 int num_chats;
+int ParseCmdLine(int argc, char *argv[], char **szPort);
 
 void *gestisci_user(void *argu);
 void *thread_chat(void *arg);
@@ -50,28 +52,13 @@ void *evadi_richiesta(void *arg){
 	new_cl->next = NULL;
 	new_cl->previous = NULL;
 	int ret;
-	_sembuf.sem_num = 0;
-	_sembuf.sem_op = -1;
-	_sembuf.sem_num = 0;
-	if(semop(gen_id, &_sembuf,1) == -1)
-	{
-		printf("Thread : errore semop \n");
-		pthread_exit(NULL);
-	}
+	get_token(gen_id,0,1);
 	Readline(conn_s,buffer,MAX_LINE-1);
 	if(strcmp(buffer, "quit\n") == 0){
 		printf("Failed \n");
 		free(new_chat);
 		free(new_cl);
-		_sembuf.sem_num = 0;
-		_sembuf.sem_op = 1;
-		_sembuf.sem_num = 0;
-		if(semop(gen_id, &_sembuf,1) == -1)
-		{
-			printf("Thread : errore semop \n");
-			pthread_exit(NULL);
-		}
-		pthread_exit(NULL);
+		set_token(gen_id,0,1);
 	}					
 	if(strcmp(buffer, "create\n") == 0) //utente richiede di creare una nuova chat
 	{
@@ -84,15 +71,7 @@ void *evadi_richiesta(void *arg){
 			printf("Failed \n");
 			free(new_chat);
 			free(new_cl);
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_num = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
-			pthread_exit(NULL);
+			set_token(gen_id,0,1);
 		}
 		printf("Nuova chat creata : %s",new_chat->chat_name);
 		num_chats += 1;
@@ -103,14 +82,7 @@ void *evadi_richiesta(void *arg){
 			free(new_chat);
 			free(new_cl);
 			num_chats -= 1;
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_num = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
+			set_token(gen_id,0,1);
 			pthread_exit(NULL);
 		}
 		for(j = 0;j < strlen(buffer);j++)
@@ -124,14 +96,7 @@ void *evadi_richiesta(void *arg){
 			printf("Errore pthread create \n");
 			exit(-1);
 		}
-		_sembuf.sem_num = 0;
-		_sembuf.sem_op = 1;
-		_sembuf.sem_num = 0;
-		if(semop(gen_id, &_sembuf,1) == -1)
-		{
-			printf("Thread : errore semop \n");
-			pthread_exit(NULL);
-		}
+		set_token(gen_id,0,1);
 		memset(buffer,0,sizeof(char)*(strlen(buffer)+1));
 		pthread_exit(NULL);
 	}		
@@ -144,43 +109,20 @@ void *evadi_richiesta(void *arg){
 		if(ret != -1)
 		{
 			mem = new_cl;
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_flg = 0;
-			if(semop(ret,&_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop #3\n");
-				pthread_exit(NULL);
-			}
+			set_token(ret,0,1);
+			get_token(gen_id,1,1); //il thread aspetta che il client sia inserito nella chat corretta,poi rifa la signal
+			set_token(gen_id,0,1);
 		}
 		else if(ret == -1){
 			printf("Disconnessione %lu",conn_s);
 			free(new_chat);
 			free(new_cl);
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_num = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
-			pthread_exit(NULL);
-		}
-		_sembuf.sem_num = 0;
-		_sembuf.sem_op = 1;
-		_sembuf.sem_num = 0;
-		if(semop(gen_id, &_sembuf,1) == -1)
-		{
-			printf("Thread : errore semop \n");
+			set_token(gen_id,0,1);
 			pthread_exit(NULL);
 		}
 		pthread_exit(NULL);
 	}
 }
-
-
-
 
 void *thread_chat(void *arg){
 	printf("Nuovo gestore di chat attivato \n");
@@ -210,13 +152,7 @@ void *thread_chat(void *arg){
 	}
 	while(1)
 	{
-		_sembuf.sem_flg = 0;
-		_sembuf.sem_num = 0;
-		_sembuf.sem_op = -1;
-		if(semop(sid,&_sembuf,1) == -1){
-			printf("Thread : errore semop #2 \n");
-			pthread_exit(NULL);
-		}
+		get_token(sid,0,1);
 		if(strcmp(cl_head->close_msg, "head_quit") == 0){
 			if(cl_head->next == NULL){ //va cancellata la chat
 				delete_chat(&chat_head, my_chat);
@@ -249,14 +185,7 @@ void *thread_chat(void *arg){
 		else if(strcmp(this_chat->close_msg, "server_close") == 0){
 			send_close_message(cl_head);
 			free_list(&cl_head);
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_flg = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}			
+			set_token(gen_id,0,1);			
 		}
 		else if(strcmp(cl_head->close_msg, "close") == 0)
 		{
@@ -282,11 +211,11 @@ void *thread_chat(void *arg){
 				printf("Errore creazione thread figlio \n");
 				pthread_exit(NULL);
 			}
-		mem = NULL;
+			set_token(gen_id,1,1);
+			mem = NULL;
 		}
 	}
 }
-
 
 void *gestisci_user(void *argu){
 	clients *my_t = malloc(sizeof(clients));
@@ -318,103 +247,44 @@ void *gestisci_user(void *argu){
 	while(1){
 		Readline(my_t->conn_s,my_t->msg,MAX_LINE-1);
 		if(strcmp(my_t->msg, "quit\n") == 0){
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = -1;
-			_sembuf.sem_flg = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
+			get_token(gen_id,0,1);
 			memset(send_name,0,sizeof(char)*(strlen(send_name)+1));
 			if(my_t->previous == NULL){
-				_sembuf.sem_op = 1;
-				_sembuf.sem_flg = 0;
-				_sembuf.sem_num = 0;
+				set_token(sem_id,0,1);
 				strcpy(my_t->close_msg, "head_quit");
-				if(semop(sem_id,&_sembuf,1) == -1)
-				{
-					printf("Thread : errore semop #1\n");
-					pthread_exit(NULL);	
-				}
-				_sembuf.sem_num = 0;
-				_sembuf.sem_op = 1;
-				_sembuf.sem_flg = 0;
-				if(semop(gen_id, &_sembuf,1) == -1)
-				{
-					printf("Thread : errore semop \n");
-					pthread_exit(NULL);
-				}
+				set_token(gen_id,0,1);
 				pthread_exit(NULL);
 			}
 			if(my_t->previous == NULL && my_t->next == NULL){
 				strcpy(my_t->close_msg, "close");
 				delete_chat(&chat_head, my_t->my_chat);
-				_sembuf.sem_num = 0;
-				_sembuf.sem_op = 1;
-				_sembuf.sem_flg = 0;
-				if(semop(gen_id, &_sembuf,1) == -1)
-				{
-					printf("Thread : errore semop \n");
-					pthread_exit(NULL);
-				}
+				set_token(gen_id,0,1);
 			}
 			else{
 				ret = delete_user(&my_t);
 				if(ret == 1)
 				{
 					delete_chat(&chat_head,my_t->my_chat);
-					_sembuf.sem_op = 1;
-					_sembuf.sem_flg = 0;
-					_sembuf.sem_num = 0;
 					strcpy(my_t->close_msg, "close");
-					if(semop(sem_id,&_sembuf,1) == -1)
-					{
-						printf("Thread : errore semop #1\n");
-						pthread_exit(NULL);	
-					}			
+					set_token(sem_id,0,1);			
 				}
 				else{
 					memset(my_t->who,0,sizeof(char)*(strlen(my_t->who)+1));
 					memset(my_t->my_chat,0,sizeof(char)*(strlen(my_t->my_chat)+1));
 					free(my_t);
 				}
-				_sembuf.sem_num = 0;
-				_sembuf.sem_op = 1;
-				_sembuf.sem_flg = 0;
-				if(semop(gen_id, &_sembuf,1) == -1){
-					printf("Thread : errore semop \n");
-					pthread_exit(NULL);
-				}
+				set_token(gen_id,0,1);
 				pthread_exit(NULL);
 			}
 		}
 		else if(strcmp(my_t->msg, "close\n") == 0 && my_t->previous == NULL){
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = -1;
-			_sembuf.sem_flg = 0;
-			if(semop(gen_id, &_sembuf,1) == -1){
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
+			get_token(gen_id,0,1);
 			memset(send_name,0,sizeof(char)*(strlen(send_name)+1));
 			delete_chat(&chat_head, my_t->my_chat);
 			close_users(my_t);
 			strcpy(my_t->close_msg, "close");
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_flg = 0;
-			if(semop(gen_id, &_sembuf,1) == -1){
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}
-			_sembuf.sem_op = 1;
-			_sembuf.sem_flg = 0;
-			_sembuf.sem_num = 0;
-			if(semop(sem_id,&_sembuf,1) == -1){
-				printf("Thread : errore semop #1\n");
-				pthread_exit(NULL);	
-			}		
+			set_token(gen_id,0,1);
+			set_token(sem_id,0,1);		
 			pthread_exit(NULL);
 		}
 		if(strcmp(my_t->close_msg, "end_chat") == 0){
@@ -425,14 +295,7 @@ void *gestisci_user(void *argu){
 			}
 			memset(send_name,0,sizeof(char)*(strlen(send_name)+1));
 			free(my_t);
-			_sembuf.sem_num = 0;
-			_sembuf.sem_op = 1;
-			_sembuf.sem_flg = 0;
-			if(semop(gen_id, &_sembuf,1) == -1)
-			{
-				printf("Thread : errore semop \n");
-				pthread_exit(NULL);
-			}	
+			set_token(gen_id,0,1);	
 			pthread_exit(NULL);
 		}
 		index = my_t;
@@ -454,7 +317,7 @@ void *gestisci_user(void *argu){
 }
 
 void close_handler(int sigo){
-	printf("Chiusura server...\n");
+	printf("\nChiusura server...\n");
 	if(num_chats == 0)
 	{
 		printf("Uscita ! \n");
@@ -463,14 +326,7 @@ void close_handler(int sigo){
 	struct sembuf _sembuf;
 	chats * index;
 	int sid;
-	_sembuf.sem_num = 0;
-	_sembuf.sem_flg = 0;
-	_sembuf.sem_op = -1;
-	if(semop(gen_id,&_sembuf,1) == -1)
-	{
-		printf("Errore sulla chiusura \n");
-		exit(-1);
-	}
+	get_token(gen_id,0,1);
 	chats *free_index;
 	printf("Segnalazione di chiusura a tutti i client connessi... \n");
 	index = chat_head;
@@ -481,22 +337,9 @@ void close_handler(int sigo){
 		free_index = index;
 		index = index->n_chat;
 		free(free_index);
-		_sembuf.sem_flg = 0;
-		_sembuf.sem_num = 0;
-		_sembuf.sem_op = 1;
-		if(semop(sid,&_sembuf,1) == -1)
-		{
-			printf("Errore semop #2 \n");
-			exit(-1);
-		}
+		set_token(sid,0,1);
 	}
-	_sembuf.sem_flg = 0;
-	_sembuf.sem_op = -num_chats;
-	_sembuf.sem_num = 0;
-	if(semop(gen_id,&_sembuf,1) == -1)
-	{
-		printf("Errore semop finale \n");
-	}
+	get_token(gen_id,0,num_chats);
 	printf("Uscita ! \n");
 	exit(0);
 }
@@ -510,15 +353,9 @@ int main(int argc, char *argv[]) {
 	int       list_s;                /*  listening socket          */
 	char buffer[MAX_LINE];
 	/*  Get command line arguments  */
- 
-    endptr = "2438";
-	mem = malloc(sizeof(clients));
-	mem = NULL;
-	port = strtol(endptr, &endptr, 0);
-
-	chat_head = malloc(sizeof(chats));
-	chat_head = NULL;
 	
+	ParseCmdLine(argc, argv, &endptr);
+	port = strtol(endptr, &endptr, 0);
 	if ( *endptr )
 	{
 	    fprintf(stderr, "server: porta non riconosciuta.\n");
@@ -560,9 +397,15 @@ int main(int argc, char *argv[]) {
     /*  Enter an infinite loop to respond to client requests  */
     
 	long       conn_s;                /*  connection socket         */
+	mem = malloc(sizeof(clients));
+	mem = NULL;
+	chat_head = malloc(sizeof(chats));
+	chat_head = NULL;
 	chats *chat_head = malloc(sizeof(chats));
 	chat_head = NULL;
-	gen_id = semget(IPC_PRIVATE,1,IPC_CREAT | 0666);
+	/* Il semaforo ha due token : visto l'accesso concorrente di molti client,il secondo token 
+	serve per segnalare al thread evadi_richiesta che l'utente è stato aggiunto alla chat corretta */
+	gen_id = semget(IPC_PRIVATE,2,IPC_CREAT | 0666);
 	if(gen_id == -1)
 	{
 		printf("Errore semget \n");
@@ -571,6 +414,10 @@ int main(int argc, char *argv[]) {
 	if(semctl(gen_id,0,SETVAL,1) == -1)
 	{
 		printf("Errore semctl \n");
+		exit(-1);
+	}
+	if(semctl(gen_id,1,SETVAL,0) == -1){
+		printf("Errore sul secondo token in semctl \n");
 		exit(-1);
 	}
 	signal(SIGINT,close_handler);
@@ -591,3 +438,27 @@ int main(int argc, char *argv[]) {
 	}
 }
 
+
+int ParseCmdLine(int argc, char *argv[], char **szPort)
+{
+    int n = 1;
+
+    while ( n < argc )
+	{
+		if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) )
+			*szPort = argv[++n];
+		else 
+			if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
+			    printf("Sintassi:\n\n");
+	    		    printf("    server -p (porta) [-h]\n\n");
+			    exit(EXIT_SUCCESS);
+			}
+		++n;
+    }
+    if (argc==1) {
+	printf("Sintassi:\n\n");
+    	printf("    server -p (porta) [-h]\n\n");
+	exit(EXIT_SUCCESS);
+    }
+    return 0;
+}
