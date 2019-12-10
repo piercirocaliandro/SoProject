@@ -46,6 +46,7 @@ void ricevi_msg(void *sockd)
 			exit(0);
 		}
 		printf("%s \n",msg);
+		memset(msg,0,sizeof(char)*(strlen(msg)+1));
 	}
 }
 
@@ -169,7 +170,7 @@ int main(int argc, char *argv[]) {
 				close(conn_s);
 				exit(0);
 			}
-			printf("Ecco le chat attualmente attive (nome chat e utenti attivi): \n");
+			printf("Ecco le chat attualmente attive (nome chat): \n");
 			printf("%s",buffer);	
 			printf("Inserire nome chat da joinare : ");
 			fgets(buffer,MAX_LINE-1,stdin);

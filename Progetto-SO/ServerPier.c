@@ -102,6 +102,11 @@ void *evadi_richiesta(void *arg){
 	}		
 	else if(strcmp(buffer, "join\n") == 0) //utente chiede join di una chat
 	{
+		if(num_chats == 0){
+			write(conn_s, "Err",4);
+			set_token(gen_id,0,1);
+			pthread_exit(NULL);
+		}
 		print_names(conn_s,chat_head);
 		printf("Richiesta di join \n");
 		memset(buffer,0,sizeof(char)*(strlen(buffer)+1));
@@ -190,12 +195,12 @@ void *thread_chat(void *arg){
 		else if(strcmp(cl_head->close_msg, "close") == 0)
 		{
 			num_chats -= 1;
-			Writeline(cl_head->conn_s,"end_chat",9);
-			if(close(cl_head->conn_s) == -1)
+			//Writeline(cl_head->conn_s,"end_chat",9);
+			/* if(close(cl_head->conn_s) == -1)
 			{
-				printf("Errore close \n");
+				printf("Errore close #1 \n");
 				pthread_exit(NULL);
-			}
+			}*/
 			printf("E' stata chiusa la chat %s",cl_head->my_chat);
 			free(cl_head);
 			pthread_exit(NULL);
