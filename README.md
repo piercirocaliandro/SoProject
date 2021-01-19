@@ -1,1 +1,1 @@
-# SoProject
+# Multi-threaded chat
